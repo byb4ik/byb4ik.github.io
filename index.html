@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта Пермского края - РГИС ПК (OpenLayers)</title>
+    
+    <!-- Подключение OpenLayers -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v9.2.4/ol.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@v9.2.4/dist/ol.js"></script>
+    
+    <style>
+
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Картографический сервис Пермского края</h1>
+        <p>Данные с портала РГИС ПК с использованием OpenLayers</p>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="control-panel">
+                <h3>Управление слоями</h3>
+                
+                <div class="layer-control">
+                    <label>
+                        <input type="checkbox" id="baseLayer" checked>
+                        Базовая карта (OSM)
+                    </label>
+                </div>
+                
+                <div class="layer-control">
+                    <label>
+                        <input type="checkbox" id="wmsLayer" checked>
+                        WMS-слой РГИС ПК
+                    </label>
+                </div>
+                
+                <div class="layer-control">
+                    <label for="opacitySlider">Прозрачность WMS-слоя:</label>
+                </div>
+                <div class="slider-container">
+                    <span id="opacityValue">70%</span>
+                    <input type="range" id="opacitySlider" min="0" max="100" value="70">
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <button id="resetView" style="padding: 8px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Сбросить вид на Пермский край
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h4>Информация о карте</h4>
+                <p>Эта карта использует WMS-сервис с официального портала РГИС Пермского края, отображаемый с помощью библиотеки OpenLayers.</p>
+                <p>Для навигации используйте:</p>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Колесо мыши - масштабирование</li>
+                    <li>ЛКМ + перемещение - панорамирование</li>
+                    <li>Правую кнопку мыши + перемещение - изменение наклона (в 3D-режиме)</li>
+                </ul>
+                <p style="margin-top: 1rem; color: #666; font-size: 0.8rem;">
+                    Примечание: WMS-слой может загружаться с задержкой. Если слой не отображается, проверьте название в коде.
+                </p>
+            </div>
+        </aside>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="coordinates" id="coordinates">
+                Координаты: 58.0103° с.ш., 56.2294° в.д. | Масштаб: 1:500000
+            </div>
+            <div class="attribution">
+                © РГИС Пермского края<br>© OpenStreetMap
+            </div>
+            <div class="map-controls">
+                <button id="toggleSidebar">☰ Панель</button>
+                <button id="toggleFullscreen">⛶ Полный экран</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
