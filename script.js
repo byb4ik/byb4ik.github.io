@@ -35,7 +35,7 @@ function createWmsLayer(layerConfig) {
             },
             serverType: 'geoserver'
         }),
-        opacity: 0.7,
+        opacity: 0.9,
         visible: layerConfig.checked,
         title: layerConfig.title,
         id: layerConfig.id // Сохраняем ID для идентификации
@@ -65,8 +65,8 @@ function trackCheckboxesSimple() {
         },
         { 
             id: 'wmsLayer4',
-            layerName: 'les:lesnayadorogapolygon32640',
-            title: 'Лесные дороги',
+            layerName: 'geo:naspunktpolygon32640',
+            title: 'Населенный пункт',
             checked: true
         }
     ];
@@ -93,9 +93,9 @@ function trackCheckboxesSimple() {
                     states[cfg.id] = chk ? chk.checked : 'not found';
                 });
                 
-               // console.log(`Checkbox ${config.id} changed to: ${this.checked}`);
-               // console.log('All states:', states);
-               // console.log(`Layer ${config.layerName} visibility: ${this.checked}`);
+                console.log(`Checkbox ${config.id} changed to: ${this.checked}`);
+                console.log('All states:', states);
+                console.log(`Layer ${config.layerName} visibility: ${this.checked}`);
             });
         } else {
             console.warn(`Checkbox with id "${config.id}" not found`);
