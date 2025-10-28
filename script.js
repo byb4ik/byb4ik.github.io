@@ -1,16 +1,18 @@
 // Использование
 document.addEventListener('DOMContentLoaded', function() {
-    trackCheckboxesSimple();
     initializeMap();
+    trackCheckboxesSimple(); // Перенесено после инициализации карты
 });
 
+// ОШИБКА: Слой osmLayer создается, но никогда не добавляется на карту
 const osmLayer = new ol.layer.Tile({
     source: new ol.source.OSM(),
     visible: true,
-   // title: 'OpenStreetMap'
+    // title: 'OpenStreetMap'
 });
 
 let wmsLayers = []; // Массив для хранения всех WMS слоев
+let map; // ОШИБКА: map не была объявлена глобально для доступа из других функций
 
 // Функция для создания WMS слоя
 function createWmsLayer(layerConfig) {
@@ -18,27 +20,22 @@ function createWmsLayer(layerConfig) {
         source: new ol.source.TileWMS({
             url: 'https://rgis.permkrai.ru/geoserver/wms',
             params: {
-                'service':'WMS',
-                'request':'GetMap',
-                'layers': layerConfig.layerName,
-                'transparent':'true',
-                'version':'1.3.0',
-                'filter':'',
-                'info_format':'application:json',
-                'tiled':true,
-                'env':'timezone:-05:00',
-                'label':'[object Object]',
-                'width':'512',
-                'height':'512',
-                'crs':'EPSG:3857',
-                'bbox':'6251937.417501137,7973910.790709592,6256829.387311388,7978802.760519841'
+                'LAYERS': layerConfig.layerName, // ОШИБКА: должно быть 'LAYERS' вместо 'layers'
+                'TRANSPARENT': 'true',
+                'VERSION': '1.3.0',
+                'TILED': true,
+                'FORMAT': 'image/png', // ОШИБКА: добавлен обязательный параметр FORMAT
+                'WIDTH': 256,  // Исправлены размеры
+                'HEIGHT': 256,
+                'CRS': 'EPSG:3857'
+                // ОШИБКА: удалены лишние параметры filter, env, label, bbox которые могут вызывать ошибки
             },
             serverType: 'geoserver'
         }),
         opacity: 0.9,
         visible: layerConfig.checked,
         title: layerConfig.title,
-        id: layerConfig.id // Сохраняем ID для идентификации
+        id: layerConfig.id
     });
 }
 
@@ -71,10 +68,13 @@ function trackCheckboxesSimple() {
         }
     ];
     
-    // Создаем WMS слои
+    // Создаем WMS слои и добавляем их на карту
     layerConfigs.forEach(config => {
         const wmsLayer = createWmsLayer(config);
         wmsLayers.push(wmsLayer);
+        
+        // ОШИБКА: слои создавались, но не добавлялись на карту
+        map.addLayer(wmsLayer);
         
         // Находим соответствующий чекбокс
         const checkbox = document.getElementById(config.id);
@@ -83,18 +83,9 @@ function trackCheckboxesSimple() {
             
             // Добавляем обработчик изменения чекбокса
             checkbox.addEventListener('change', function() {
-                // Обновляем видимость слоя
                 wmsLayer.setVisible(this.checked);
                 
-                // Логируем состояние
-                const states = {};
-                layerConfigs.forEach(cfg => {
-                    const chk = document.getElementById(cfg.id);
-                    states[cfg.id] = chk ? chk.checked : 'not found';
-                });
-                
                 console.log(`Checkbox ${config.id} changed to: ${this.checked}`);
-                console.log('All states:', states);
                 console.log(`Layer ${config.layerName} visibility: ${this.checked}`);
             });
         } else {
@@ -108,70 +99,94 @@ function trackCheckboxesSimple() {
 // Инициализация карты
 function initializeMap() {
     // Создание карты
-    const map = new ol.Map({
+    map = new ol.Map({ // ОШИБКА: добавлено присвоение глобальной переменной
         target: 'map',
-        layers: [osmLayer, ...wmsLayers], // Добавляем все WMS слои
+        layers: [
+            new ol.layer.Tile({
+                source: new ol.source.XYZ({
+                    url: 'https://a-rgis.permkrai.ru/osm/tile/{z}/{x}/{y}.png',
+                    attributions: '© Пермский край' // Добавлены атрибуции
+                })
+            })
+        ],
         view: new ol.View({
-            center: ol.proj.fromLonLat([56.2294, 58.0103]), // Центр на Пермском крае
+            center: ol.proj.fromLonLat([56.2294, 58.0103]),
             zoom: 8,
             maxZoom: 18,
             minZoom: 5
-        }),
+        })
     });
 
-    // Элементы управления интерфейсом
-    document.getElementById('baseLayer').addEventListener('change', function(e) {
-        osmLayer.setVisible(e.target.checked);
-    });
+    // ОШИБКА: Проверка существования элементов перед добавлением обработчиков
+    const baseLayerCheckbox = document.getElementById('baseLayer');
+    if (baseLayerCheckbox) {
+        baseLayerCheckbox.addEventListener('change', function(e) {
+            // ОШИБКА: osmLayer не добавлялся на карту, поэтому эта функция не работала
+            if (map.getLayers().getArray().includes(osmLayer)) {
+                osmLayer.setVisible(e.target.checked);
+            }
+        });
+    }
 
     const opacitySlider = document.getElementById('opacitySlider');
     const opacityValue = document.getElementById('opacityValue');
 
-    opacitySlider.addEventListener('input', function() {
-        const opacity = this.value / 100;
-        // Применяем прозрачность ко всем WMS слоям
-        wmsLayers.forEach(layer => {
-            layer.setOpacity(opacity);
+    if (opacitySlider && opacityValue) {
+        opacitySlider.addEventListener('input', function() {
+            const opacity = this.value / 100;
+            wmsLayers.forEach(layer => {
+                layer.setOpacity(opacity);
+            });
+            opacityValue.textContent = `${this.value}%`;
         });
-        opacityValue.textContent = `${this.value}%`;
-    });
+    }
 
-    document.getElementById('resetView').addEventListener('click', function() {
-        map.getView().setCenter(ol.proj.fromLonLat([56.2294, 58.0103]));
-        map.getView().setZoom(8);
-    });
+    const resetViewBtn = document.getElementById('resetView');
+    if (resetViewBtn) {
+        resetViewBtn.addEventListener('click', function() {
+            map.getView().setCenter(ol.proj.fromLonLat([56.2294, 58.0103]));
+            map.getView().setZoom(8);
+        });
+    }
 
-    document.getElementById('toggleSidebar').addEventListener('click', function() {
-        const sidebar = document.querySelector('.sidebar');
-        sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
-        
-        // Обновляем размер карты после изменения видимости боковой панели
-        setTimeout(() => {
-            map.updateSize();
-        }, 300);
-    });
-
-    document.getElementById('toggleFullscreen').addEventListener('click', function() {
-        const mapContainer = document.querySelector('.map-container');
-        
-        if (!document.fullscreenElement) {
-            if (mapContainer.requestFullscreen) {
-                mapContainer.requestFullscreen();
-            } else if (mapContainer.webkitRequestFullscreen) {
-                mapContainer.webkitRequestFullscreen();
-            } else if (mapContainer.msRequestFullscreen) {
-                mapContainer.msRequestFullscreen();
+    const toggleSidebarBtn = document.getElementById('toggleSidebar');
+    if (toggleSidebarBtn) {
+        toggleSidebarBtn.addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+                setTimeout(() => {
+                    map.updateSize();
+                }, 300);
             }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
+        });
+    }
+
+    const toggleFullscreenBtn = document.getElementById('toggleFullscreen');
+    if (toggleFullscreenBtn) {
+        toggleFullscreenBtn.addEventListener('click', function() {
+            const mapContainer = document.querySelector('.map-container');
+            if (!mapContainer) return;
+            
+            if (!document.fullscreenElement) {
+                if (mapContainer.requestFullscreen) {
+                    mapContainer.requestFullscreen();
+                } else if (mapContainer.webkitRequestFullscreen) {
+                    mapContainer.webkitRequestFullscreen();
+                } else if (mapContainer.msRequestFullscreen) {
+                    mapContainer.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
             }
-        }
-    });
+        });
+    }
 
     // Обработчик изменения размера экрана
     document.addEventListener('fullscreenchange', updateMapSize);
@@ -193,19 +208,17 @@ function initializeMap() {
         const resolution = map.getView().getResolution();
         const scale = resolution ? (1 / resolution * 39.37 * 72).toFixed(0) : 'N/A';
         
-        document.getElementById('coordinates').innerHTML = 
-            `Координаты: ${coordinate[1].toFixed(4)}° с.ш., ${coordinate[0].toFixed(4)}° в.д. | Масштаб: 1:${scale} | Уровень зума: ${zoom.toFixed(1)}`;
+        const coordinatesElement = document.getElementById('coordinates');
+        if (coordinatesElement) {
+            coordinatesElement.innerHTML = 
+                `Координаты: ${coordinate[1].toFixed(4)}° с.ш., ${coordinate[0].toFixed(4)}° в.д. | Масштаб: 1:${scale} | Уровень зума: ${zoom.toFixed(1)}`;
+        }
     });
 
     // Попап для отображения информации при клике
-    const popup = new ol.Overlay({
-        element: document.createElement('div'),
-        positioning: 'bottom-center',
-        stopEvent: false
-    });
-
-    popup.getElement().className = 'ol-popup';
-    popup.getElement().style.cssText = `
+    const popupElement = document.createElement('div');
+    popupElement.className = 'ol-popup';
+    popupElement.style.cssText = `
         background: white;
         padding: 10px;
         border-radius: 4px;
@@ -215,6 +228,12 @@ function initializeMap() {
         max-width: 300px;
         display: none;
     `;
+
+    const popup = new ol.Overlay({
+        element: popupElement,
+        positioning: 'bottom-center',
+        stopEvent: false
+    });
 
     map.addOverlay(popup);
 
@@ -226,35 +245,42 @@ function initializeMap() {
             Долгота: ${coordinate[0].toFixed(6)}°
         `;
         
-        popup.getElement().innerHTML = content;
-        popup.getElement().style.display = 'block';
+        popupElement.innerHTML = content;
+        popupElement.style.display = 'block';
         popup.setPosition(evt.coordinate);
         
-        // Автоматически скрыть попап через 3 секунды
         setTimeout(() => {
-            popup.getElement().style.display = 'none';
+            popupElement.style.display = 'none';
         }, 3000);
     });
 
     // Адаптация для мобильных устройств
     if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').style.display = 'none';
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.style.display = 'none';
+        }
     }
 
-    // Обработка ошибок загрузки WMS для всех слоев
-    wmsLayers.forEach(layer => {
-        layer.getSource().on('tileloaderror', function() {
-            console.error(`Ошибка загрузки WMS-слоя: ${layer.get('title')}`);
-        });
+    // Обработка ошибок загрузки WMS (перенесена в trackCheckboxesSimple)
+    setTimeout(() => {
+        wmsLayers.forEach(layer => {
+            const source = layer.getSource();
+            if (source) {
+                source.on('tileloaderror', function() {
+                    console.error(`Ошибка загрузки WMS-слоя: ${layer.get('title')}`);
+                });
 
-        layer.getSource().on('tileloadstart', function() {
-            console.log(`Началась загрузка WMS-тайла: ${layer.get('title')}`);
-        });
+                source.on('tileloadstart', function() {
+                    console.log(`Началась загрузка WMS-тайла: ${layer.get('title')}`);
+                });
 
-        layer.getSource().on('tileloadend', function() {
-            console.log(`WMS-тайл успешно загружен: ${layer.get('title')}`);
+                source.on('tileloadend', function() {
+                    console.log(`WMS-тайл успешно загружен: ${layer.get('title')}`);
+                });
+            }
         });
-    });
+    }, 1000);
 
     return map;
 }
